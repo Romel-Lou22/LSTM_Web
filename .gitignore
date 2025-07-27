@@ -1,0 +1,49 @@
+# → Documentación oficial
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# ───── 📦 Dependencias ─────
+node_modules/
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# ───── 🧪 Testing ─────
+coverage/
+
+# ───── ⚙️ Next.js ─────
+.next/
+out/
+build/
+
+# ───── 📁 VSCode ─────
+.vscode/
+
+# ───── 🔒 Archivos sensibles ─────
+.env*
+*.pem
+
+# ───── 🧹 Archivos del sistema ─────
+.DS_Store
+Thumbs.db
+
+# ───── 🛠️ Debug y logs ─────
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ───── 🛰️ Vercel ─────
+.vercel/
+
+# ───── 📦 TypeScript ─────
+*.tsbuildinfo
+next-env.d.ts
+
+# ───── 💻 Otros ─────
+*.log
+.idea/
+*.swp

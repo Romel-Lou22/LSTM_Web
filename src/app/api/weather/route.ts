@@ -34,6 +34,22 @@ interface OpenWeatherResponse {
   dt: number;
 }
 
+// ✅ FUNCIÓN AUXILIAR PARA FORMATEAR DECIMALES
+function formatWeatherValue(value: number, decimals: number = 1): number {
+  return parseFloat(value.toFixed(decimals));
+}
+
+// ✅ FUNCIÓN AUXILIAR PARA FORMATEAR CONFIANZA (0-100%)
+function formatConfidence(value: number): number {
+  // Si el valor es mayor a 1, asumimos que ya está en porcentaje
+  if (value > 1) {
+    // Si es mayor a 100, hay un error - limitamos a 100%
+    return Math.min(Math.round(value), 100);
+  }
+  // Si es menor o igual a 1, asumimos que es decimal (0-1)
+  return Math.round(value * 100);
+}
+
 export async function GET(request: NextRequest) {
   try {
     // 1. Obtener datos actuales de OpenWeatherMap
@@ -56,24 +72,26 @@ export async function GET(request: NextRequest) {
     // 4. Enviar al modelo de Hugging Face y obtener predicción
     const prediction = await predictWeatherConditions(mlInputData);
 
-    // 5. Preparar respuesta completa
+    // 5. Preparar respuesta completa con valores formateados
     const response = {
       current: {
-        temperature: currentData.main.temp,
-        humidity: currentData.main.humidity,
-        feels_like: currentData.main.feels_like,
-        pressure: currentData.main.pressure,
+        temperature: formatWeatherValue(currentData.main.temp, 1), // ✅ 1 decimal
+        humidity: Math.round(currentData.main.humidity), // ✅ Sin decimales
+        feels_like: formatWeatherValue(currentData.main.feels_like, 1), // ✅ 1 decimal
+        pressure: Math.round(currentData.main.pressure), // ✅ Sin decimales
         description: currentData.weather[0]?.description || "Sin descripción",
         condition: currentData.weather[0]?.main || "Clear",
         icon: currentData.weather[0]?.icon || "01d",
-        wind_speed: currentData.wind.speed,
+        wind_speed: formatWeatherValue(currentData.wind.speed, 1), // ✅ 1 decimal
         timestamp: new Date().toISOString()
       },
       prediction: {
-        next_temperature: prediction.next_temperature,
-        next_humidity: prediction.next_humidity,
+        // ✅ AQUÍ ESTÁ EL FIX PRINCIPAL - Formatear las predicciones del ML
+        next_temperature: formatWeatherValue(prediction.next_temperature, 1), // 7.8°C en lugar de 7.76656909557067°C
+        next_humidity: Math.round(prediction.next_humidity), // 96% en lugar de 95.74339021569506%
         trend: prediction.trend,
-        confidence: prediction.confidence
+        // ✅ FIX PARA CONFIANZA - Usar función especializada
+        confidence: formatConfidence(prediction.confidence)
       },
       alerts: generateWeatherAlerts(currentData, prediction),
       forecast: generateSimpleForecast(prediction, currentData.weather[0]?.main || "Clear")
@@ -84,7 +102,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error en API de clima:', error);
     
-    // Respuesta de fallback con datos simulados
+    // ✅ Respuesta de fallback con datos simulados formateados
     const fallbackResponse = {
       current: {
         temperature: 25,
@@ -101,7 +119,7 @@ export async function GET(request: NextRequest) {
         next_temperature: 26,
         next_humidity: 63,
         trend: "stable" as const,
-        confidence: 0.5
+        confidence: 50 // ✅ Cambiar de 0.5 a 50 para mostrar como porcentaje
       },
       alerts: ["Error al obtener datos reales - usando simulación"],
       forecast: [
@@ -131,8 +149,8 @@ function generateSimulatedHistory(currentWeather: OpenWeatherResponse): WeatherR
     const hourlyHumidityVariation = Math.cos((24 - i) * Math.PI / 12) * 8;
     
     history.push({
-      temperature: currentWeather.main.temp + hourlyTempVariation + (Math.random() - 0.5) * 2,
-      humidity: currentWeather.main.humidity + hourlyHumidityVariation + (Math.random() - 0.5) * 5,
+      temperature: formatWeatherValue(currentWeather.main.temp + hourlyTempVariation + (Math.random() - 0.5) * 2, 1), // ✅ Formatear historial también
+      humidity: Math.round(currentWeather.main.humidity + hourlyHumidityVariation + (Math.random() - 0.5) * 5), // ✅ Sin decimales
       timestamp: hourAgo.toISOString()
     });
   }
@@ -192,7 +210,7 @@ function generateSimpleForecast(prediction: {
   
   for (let i = 0; i < 3; i++) {
     const tempVariation = (Math.random() - 0.5) * 4;
-    const predictedTemp = Math.round(prediction.next_temperature + tempVariation);
+    const predictedTemp = Math.round(prediction.next_temperature + tempVariation); // ✅ Redondear temperatura del pronóstico
     
     // ✅ Lógica inteligente para determinar condición del clima
     let condition = baseCondition; // Usar condición actual como base
@@ -212,8 +230,8 @@ function generateSimpleForecast(prediction: {
     
     forecast.push({
       time: days[i],
-      temperature: `${predictedTemp}°C`, // ✅ Cambié de 'temp' a 'temperature' para consistencia
-      condition: condition // ✅ AGREGADO: Campo condition para los iconos
+      temperature: `${predictedTemp}°C`, // ✅ Ya está redondeado
+      condition: condition // ✅ Campo condition para los iconos
     });
   }
   
@@ -221,7 +239,7 @@ function generateSimpleForecast(prediction: {
 }
 
 /**
- * ✅ NUEVA FUNCIÓN: Selecciona condición del clima basada en parámetros
+ * ✅ FUNCIÓN: Selecciona condición del clima basada en parámetros
  */
 function getWeatherConditionByTemperature(temp: number, humidity: number): string {
   // Lógica simple pero realista

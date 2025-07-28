@@ -202,7 +202,7 @@ const WeatherWidget: React.FC = () => {
                 </span>
                 {getTrendIcon(weatherData.prediction.trend)}
                 <span className="text-sm text-gray-500">
-                  Confianza: {Math.round(weatherData.prediction.confidence * 100)}%
+                  Confianza: {Math.round(weatherData.prediction.confidence * 1)}%
                 </span>
               </div>
             </div>
